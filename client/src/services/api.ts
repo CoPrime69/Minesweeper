@@ -10,6 +10,7 @@ export const saveScore = async (scoreData: {
   return response.data;
 };
 
+
 export const getPersonalBests = async () => {
   const response = await axios.get('/scores/personal-best');
   return response.data.data;

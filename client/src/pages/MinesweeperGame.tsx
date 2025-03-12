@@ -227,10 +227,30 @@ const MinesweeperGame: React.FC<GameProps> = ({ onGameComplete }) => {
       endTime: endTime,
     });
     
-    // Calculate score: lower time is better
-    const score = Math.max(1000 - timeTaken, 100) * 
-                 (difficulty === "expert" ? 3 : 
-                  difficulty === "intermediate" ? 2 : 1);
+    // Base scores for each difficulty (balanced values)
+    const baseScores = {
+      beginner: 100,
+      intermediate: 250,
+      expert: 400
+    };
+    
+    // Time factors - how many points to deduct per second
+    const timeFactors = {
+      beginner: 0.5,     // More forgiving time penalty
+      intermediate: 0.4, // Medium time penalty
+      expert: 0.3        // Less penalty per second because expert takes longer
+    };
+    
+    // Calculate score based on difficulty, time, and remaining mines
+    const baseScore = baseScores[difficulty];
+    const timePenalty = Math.min(timeFactors[difficulty] * timeTaken, baseScore * 0.7); // Cap time penalty at 70% of base score
+    
+    // Bonus for efficiency (remaining mines vs total mines ratio can give up to 30% bonus)
+    const minesEfficiency = gameState.flagsPlaced / difficultySettings[difficulty].mines;
+    const efficiencyBonus = minesEfficiency > 0.9 ? baseScore * 0.3 : baseScore * 0.15; // 30% bonus for using flags efficiently
+    
+    // Final score calculation with minimum score floor
+    const score = Math.max(Math.round(baseScore - timePenalty + efficiencyBonus), 10);
     
     if (isAuthenticated && onGameComplete) {
       try {
@@ -254,7 +274,35 @@ const MinesweeperGame: React.FC<GameProps> = ({ onGameComplete }) => {
     
     if (isAuthenticated && onGameComplete) {
       const timeTaken = Math.floor((endTime - gameState.startTime) / 1000);
-      const score = Math.max(50 - timeTaken, 10);
+      
+      // Calculate consolation score based on game progress
+      // This estimates how much of the board was cleared before losing
+      const boardSize = difficultySettings[difficulty].width * difficultySettings[difficulty].height;
+      const totalCells = boardSize - difficultySettings[difficulty].mines;
+      
+      // We don't have direct access to cells cleared, so let's use time as a rough proxy for progress
+      // Assuming reasonable clearing rates per difficulty
+      const avgTimePerCell = {
+        beginner: 0.5,      // seconds per cell
+        intermediate: 0.4,  
+        expert: 0.3
+      };
+      
+      const estimatedCellsCleared = Math.min(timeTaken / avgTimePerCell[difficulty], totalCells);
+      const progressPercent = estimatedCellsCleared / totalCells;
+      
+      // Base consolation scores by difficulty
+      const baseConsolationScores = {
+        beginner: 20,
+        intermediate: 40,
+        expert: 60
+      };
+      
+      // Calculate score based on progress (up to 80% of consolation base)
+      const score = Math.max(
+        Math.round(baseConsolationScores[difficulty] * progressPercent * 0.8),
+        5 // Minimum 5 points for participation
+      );
       
       try {
         saveScore({ score, difficulty, time: timeTaken });

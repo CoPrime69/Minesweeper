@@ -171,6 +171,71 @@ const HomePage: React.FC = () => {
           </Link>
         </div>
       </div>
+      
+      {/* Scoring System Section */}
+      <div className="mt-16 rounded-xl shadow-lg p-8 max-w-5xl mx-auto" style={{
+        background: `linear-gradient(to right, ${COLORS[3] + '10'}, ${COLORS[4] + '10'})`,
+        borderLeft: `3px solid ${COLORS[3]}`,
+      }}>
+        <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke={COLORS[3]}>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          Scoring System
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-white rounded-lg p-6 shadow-md">
+            <h3 className="text-xl font-semibold mb-3 text-gray-800">How Winning Scores Work</h3>
+            <p className="text-gray-700 mb-4">Your score is calculated based on time taken, difficulty level, and flag efficiency.</p>
+            <ul className="space-y-3">
+              {[
+                "Beginner games start at 100 base points",
+                "Intermediate games start at 250 base points",
+                "Expert games start at 400 base points",
+                "Faster completion times earn higher scores",
+                "Efficient flag usage gives up to 30% bonus points"
+              ].map((rule, index) => (
+                <li key={index} className="flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-gray-700">{rule}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
+              <p className="text-sm text-purple-800 font-medium">Possible score ranges:</p>
+              <p className="text-sm text-purple-700">• Beginner: 30-130 points</p>
+              <p className="text-sm text-purple-700">• Intermediate: 75-325 points</p>
+              <p className="text-sm text-purple-700">• Expert: 120-520 points</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg p-6 shadow-md">
+            <h3 className="text-xl font-semibold mb-3 text-gray-800">Consolation Scores</h3>
+            <p className="text-gray-700 mb-4">Even when you hit a mine, you'll still earn points based on your progress:</p>
+            <ul className="space-y-3">
+              {[
+                "Points are awarded based on estimated board progress",
+                "Longer game time (before losing) generally means more progress",
+                "Beginner: Up to 20 base consolation points",
+                "Intermediate: Up to 40 base consolation points",
+                "Expert: Up to 60 base consolation points"
+              ].map((rule, index) => (
+                <li key={index} className="flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span className="text-gray-700">{rule}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <p className="text-sm text-blue-800 font-medium">Strategy tip:</p>
+              <p className="text-sm text-blue-700">Careful and efficient flag placement can significantly increase your score. Use your flags wisely!</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

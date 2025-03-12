@@ -106,7 +106,7 @@ const DifficultyHeader = styled.h3`
   display: inline-block;
 `;
 
-const SignInButton = styled.button`
+const Button = styled.button`
   background: linear-gradient(to right, ${GRADIENT_START}, ${GRADIENT_END});
   color: white;
   padding: 0.5rem 1rem;
@@ -130,6 +130,47 @@ const SignInPrompt = styled.div`
   border-left: 4px solid ${GRADIENT_START};
 `;
 
+const ResetButtonContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+`;
+
+const ResetButton = styled(Button)`
+  background: linear-gradient(to right, #FF6B6B, #FF8E8E);
+`;
+
+const PreviousGameStats = styled.div`
+  margin-top: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  border-left: 4px solid ${COLORS[1]};
+`;
+
+const PreviousGameTitle = styled.h3`
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: ${COLORS[1]};
+`;
+
+const StatRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+`;
+
+const StatLabel = styled.span`
+  color: #666;
+  font-weight: 500;
+`;
+
+const StatValue = styled.span`
+  color: ${GRADIENT_START};
+  font-weight: 600;
+`;
+
 interface PersonalBest {
   _id: string;
   difficulty: string;
@@ -138,11 +179,23 @@ interface PersonalBest {
   date: string;
 }
 
+interface PreviousGameStat {
+  difficulty: string;
+  score: number;
+  time: number;
+  won: boolean;
+  date: Date;
+  // cellsRevealed: number;
+  // flagsPlaced: number;
+}
+
 const GamePage: React.FC = () => {
   const { isAuthenticated } = useContext(AuthContext);
   const navigate = useNavigate();
   const [personalBests, setPersonalBests] = useState<PersonalBest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [previousGameStat, setPreviousGameStat] = useState<PreviousGameStat | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     // Load personal best scores if authenticated
@@ -172,8 +225,20 @@ const GamePage: React.FC = () => {
   const handleGameComplete = async (
     score: number,
     difficulty: string,
-    won: boolean
+    won: boolean,
+    // gameStats = { cellsRevealed: 0, flagsPlaced: 0 }
   ) => {
+    // Update previous game stats
+    setPreviousGameStat({
+      difficulty,
+      score,
+      time: score > 0 ? score / 10 : 0, // Assuming score calculation is based on time
+      won,
+      date: new Date(),
+      // cellsRevealed: gameStats.cellsRevealed,
+      // flagsPlaced: gameStats.flagsPlaced
+    });
+
     // Increment the counter to trigger a re-render
     setGameCompletionCount((prev) => prev + 1);
 
@@ -205,6 +270,24 @@ const GamePage: React.FC = () => {
     }
   }, [gameCompletionCount, isAuthenticated]);
 
+  // const handleResetScores = async () => {
+  //   if (!isAuthenticated) return;
+    
+  //   if (window.confirm("Are you sure you want to reset all your scores? This cannot be undone.")) {
+  //     try {
+  //       setResetLoading(true);
+  //       await resetScores();
+  //       setPersonalBests([]);
+  //       toast.success("All scores have been reset successfully!");
+  //     } catch (error) {
+  //       console.error("Failed to reset scores:", error);
+  //       toast.error("Failed to reset scores. Please try again.");
+  //     } finally {
+  //       setResetLoading(false);
+  //     }
+  //   }
+  // };
+
   // Group personal bests by difficulty - Fix: Use case-insensitive comparison
   const beginnerScores = personalBests.filter(
     (score) => score.difficulty.toLowerCase() === "beginner"
@@ -231,9 +314,9 @@ const GamePage: React.FC = () => {
           {!isAuthenticated ? (
             <SignInPrompt>
               <p className="mb-3 font-medium">Sign in to track your scores!</p>
-              <SignInButton onClick={() => navigate("/login")}>
+              <Button onClick={() => navigate("/login")}>
                 Sign In
-              </SignInButton>
+              </Button>
             </SignInPrompt>
           ) : isLoading ? (
             <p>Loading your scores...</p>
@@ -283,7 +366,46 @@ const GamePage: React.FC = () => {
               ) : (
                 <p className="text-gray-500">No scores yet</p>
               )}
+
+              {/* <ResetButtonContainer>
+                <ResetButton 
+                  onClick={handleResetScores} 
+                  disabled={resetLoading}
+                >
+                  {resetLoading ? "Resetting..." : "Reset All Scores"}
+                </ResetButton>
+              </ResetButtonContainer> */}
             </>
+          )}
+
+          {previousGameStat && (
+            <PreviousGameStats>
+              <PreviousGameTitle>Previous Game Stats</PreviousGameTitle>
+              <StatRow>
+                <StatLabel>Result:</StatLabel>
+                <StatValue>{previousGameStat.won ? "Win" : "Loss"}</StatValue>
+              </StatRow>
+              <StatRow>
+                <StatLabel>Difficulty:</StatLabel>
+                <StatValue>{previousGameStat.difficulty}</StatValue>
+              </StatRow>
+              <StatRow>
+                <StatLabel>Time:</StatLabel>
+                <StatValue>{previousGameStat.time.toFixed(1)}s</StatValue>
+              </StatRow>
+              <StatRow>
+                <StatLabel>Score:</StatLabel>
+                <StatValue>{previousGameStat.score} pts</StatValue>
+              </StatRow>
+              {/* <StatRow>
+                <StatLabel>Cells Revealed:</StatLabel>
+                <StatValue>{previousGameStat.cellsRevealed}</StatValue>
+              </StatRow> */}
+              {/* <StatRow>
+                <StatLabel>Flags Placed:</StatLabel>
+                <StatValue>{previousGameStat.flagsPlaced}</StatValue>
+              </StatRow> */}
+            </PreviousGameStats>
           )}
         </ScoreboardArea>
       </GameSection>
