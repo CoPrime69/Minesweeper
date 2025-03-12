@@ -253,6 +253,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🙏 Acknowledgments
 
 - Inspired by the classic Microsoft Minesweeper
-- Thanks to all contributors who have helped improve this project
 
-Created with ❤️ by [Your Name]
+Created with ❤️ by CoPrime
