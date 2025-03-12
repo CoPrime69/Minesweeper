@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const navigate = useNavigate();
 
   // Initialize axios defaults
-  axios.defaults.baseURL = "http://localhost:5000/api";
+  axios.defaults.baseURL = "https://minesweeper-backend-o698.onrender.com/api";
 
   // Set auth token for all requests if available
   useEffect(() => {
