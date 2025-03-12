@@ -15,9 +15,9 @@ interface Score {
 
 // Score thresholds that indicate a winning game
 const WIN_SCORE_THRESHOLDS = {
-  beginner: 500,
-  intermediate: 1000,
-  expert: 2000
+  beginner: 50,
+  intermediate: 125,
+  expert: 200
 };
 
 const ProfilePage: React.FC = () => {

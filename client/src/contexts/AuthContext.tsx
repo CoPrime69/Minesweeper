@@ -2,7 +2,6 @@ import React, { createContext, useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
-
 interface User {
   id: string;
   username: string;
@@ -52,8 +51,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const navigate = useNavigate();
 
   // Initialize axios defaults
-  axios.defaults.baseURL = "http://localhost:5000/api";
-
+  const API_URL =
+    process.env.REACT_APP_API_URL ||
+    "https://minesweeper-backend-o698.onrender.com/api";
+  axios.defaults.baseURL = API_URL;
   // Set auth token for all requests if available
   useEffect(() => {
     if (token) {
@@ -130,7 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     password: string
   ) => {
     try {
-      console.log('Attempting to register with:', { username, email });
+      console.log("Attempting to register with:", { username, email });
       const res = await axios.post("/auth/register", {
         username,
         email,
@@ -145,9 +146,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       return res.data;
     } catch (error: any) {
-      console.error('Registration error details:', error);
-      if (error.code === 'ERR_NETWORK') {
-        throw new Error('Unable to connect to the server. Please ensure the server is running.');
+      console.error("Registration error details:", error);
+      if (error.code === "ERR_NETWORK") {
+        throw new Error(
+          "Unable to connect to the server. Please ensure the server is running."
+        );
       }
       throw new Error(error.response?.data?.message || "Registration failed");
     }

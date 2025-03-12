@@ -10,7 +10,7 @@ export const saveScore = async (scoreData: {
   return response.data;
 };
 
-
+// axios.defaults.baseURL = "https://minesweeper-backend-o698.onrender.com/api";
 export const getPersonalBests = async () => {
   const response = await axios.get('/scores/personal-best');
   return response.data.data;
