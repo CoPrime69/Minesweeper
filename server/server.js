@@ -17,7 +17,7 @@ const app = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: 'https://minesweeper-seven-lilac.vercel.app/', // Your frontend URL
+  origin: 'http://localhost:3000', // Your frontend URL
   credentials: true
 }));app.use(express.json());
 
