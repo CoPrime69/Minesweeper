@@ -5,7 +5,6 @@ A modern, full-stack implementation of the classic Minesweeper game with user au
 ![Minesweeper Platform](https://i.imgur.com/placeholder-image.png)
 
 ## 📋 Table of Contents
-
 - [Features](#features)
 - [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
@@ -17,6 +16,8 @@ A modern, full-stack implementation of the classic Minesweeper game with user au
 - [API Endpoints](#api-endpoints)
 - [Contributing](#contributing)
 - [License](#license)
+- [Troubleshooting](#troubleshooting)
+- [Acknowledgments](#acknowledgments)
 
 ## ✨ Features
 
@@ -27,22 +28,23 @@ A modern, full-stack implementation of the classic Minesweeper game with user au
 - **Admin Dashboard**: Comprehensive analytics and user management (for admins)
 - **Responsive Design**: Play on any device with a fully responsive UI
 - **Score System**: Points awarded for successful games and even consolation points for incomplete games
-- **Difficulty Levels**: Choose from Easy, Medium, Hard, or create custom board sizes
+- **Difficulty Levels**: Choose from Beginner, Intermediate, Expert, or create custom board sizes
 - **Timer and Score Tracking**: Keep track of your best times and scores
-<!-- - **First-click Protection**: Never hit a mine on your first click
+- **Flagging System**: Mark potential mines with flags or question marks
+
+# Features to be added
+- **First-click Protection**: Never hit a mine on your first click
 - **Customizable Themes**: Multiple visual themes to choose from
 - **Save/Load Game**: Pause and resume your game later
 - **Hints System**: Get help when you're stuck with limited hints
 - **Sound Effects**: Toggle-able audio feedback
-- **Flagging System**: Mark potential mines with flags or question marks
 - **Touchscreen Support**: Play on mobile devices with optimized controls
 - **Accessibility Features**: Color blind mode and keyboard navigation
-- **Undo Feature**: Revert your last move (in casual mode only) -->
+- **Undo Feature**: Revert your last move (in casual mode only)
 
 ## 🛠️ Technology Stack
 
 ### Frontend
-
 - React.js (with TypeScript)
 - React Router for navigation
 - Axios for API requests
@@ -52,15 +54,18 @@ A modern, full-stack implementation of the classic Minesweeper game with user au
 - Styled Components for component styling
 
 ### Backend
-
 - Node.js with Express
 - MongoDB with Mongoose
 - JWT for authentication
 - bcrypt for password hashing
 - Express Rate Limit for API security
 
-## 📂 Project Structure
+### DevOps
+- Render for backend hosting
+- Vercel for frontend hosting
+- MongoDB Atlas for database
 
+## 📂 Project Structure
 ```
 minesweeper-platform/
 ├── client/                 # Frontend React application
@@ -79,16 +84,20 @@ minesweeper-platform/
     └── server.js           # Main server entry point
 ```
 
-## 🚀 Installation
+## 📥 Installation
 
 ### Prerequisites
-
 - Node.js (v14+)
-- MongoDB
+- MongoDB (local installation or MongoDB Atlas account)
 - npm or yarn
 
-### Setting up the Client
+### Clone the Repository
+```bash
+git clone https://github.com/yourusername/minesweeper-platform.git
+cd minesweeper-platform
+```
 
+### Setting up the Client
 ```bash
 # Navigate to the client directory
 cd client
@@ -100,7 +109,6 @@ npm install
 ```
 
 ### Setting up the Server
-
 ```bash
 # Navigate to the server directory
 cd server
@@ -111,65 +119,142 @@ npm install
 # Create a .env file in the server directory (see Environment Variables section)
 ```
 
-### Steps
+## 🔧 Environment Setup
 
-1. Clone the repository:
+### Server (.env file in /server directory)
+```
+PORT=5000
+MONGODB_URI=mongodb://localhost:27017/minesweeper
+# or your MongoDB Atlas URI
+JWT_SECRET=your_jwt_secret_here
+JWT_EXPIRE=30d
+```
 
-   ```
-   git clone https://github.com/username/minesweeper-platform.git
-   cd minesweeper-platform
-   ```
+### Client (.env file in /client directory)
+```
+REACT_APP_API_URL=http://localhost:5000/api
+# For production: https://minesweeper-backend-o698.onrender.com/api
+```
 
-2. Install dependencies:
+## 🚀 Running the Application
 
-   ```
-   npm install
-   ```
+### Development Mode
 
-3. Start the development server:
-   ```
-   npm start
-   ```
+#### Start the Backend Server
+```bash
+cd server
+npm run dev
+```
 
-## How to Play
+#### Start the Frontend Client
+```bash
+cd client
+npm start
+```
 
-1. **Objective**: Uncover all cells that don't contain mines
-2. **Left-click**: Reveal a cell
-3. **Right-click**: Place a flag (to mark a potential mine)
-4. **Double-click**: Reveal surrounding cells (when surrounding flags match the number)
+The frontend will be available at http://localhost:3000 and backend at http://localhost:5000.
 
-### Game Rules
+### Production Mode
 
-- Numbers indicate how many mines are adjacent to that cell
-- Use logic to determine which cells are safe to click
-- Flag all mines correctly to win the game
+#### Build the Frontend
+```bash
+cd client
+npm run build
+```
 
-## Admin Features
+#### Start the Backend (which will serve the built frontend)
+```bash
+cd server
+npm start
+```
 
-- **User Management**: Add, edit, and delete users
-- **Game Analytics**: View detailed game statistics and user activity
-- **Content Management**: Manage game content and settings
+## 🎮 Game Rules
 
-## API Endpoints
+1. **Objective**: Uncover all non-mine cells on the board without clicking on a mine.
+2. **Controls**:
+   - Left-click: Reveal a cell
+   - Right-click: Place/remove a flag on a suspected mine
+   - Double-click: Reveal surrounding cells (when surrounding flags match the number) (To be added)
+3. **Cell Types**:
+   - Empty cells (no adjacent mines): Clicking reveals neighboring cells automatically
+   - Numbered cells: Show how many mines are in the adjacent 8 cells
+   - Mine cells: Clicking ends the game
+4. **Winning**: Successfully reveal all safe cells without triggering any mines
+5. **Scoring System**:
+   - Base scores vary by difficulty (Beginner: 100, Intermediate: 250, Expert: 400)
+   - Time penalties reduce your score the longer you take
+   - Efficiency bonuses for correctly using flags
+   - Consolation scores for lost games based on estimated progress
+6. **Special Features** (To be added):
+   - First-click protection ensures you never hit a mine on your first click
+   - Use flags to mark potential mines and question marks for cells you're unsure about
+   - Use hints when you're stuck (limited number available) 
 
-- **User Authentication**: Register, login, and logout endpoints
-- **Game Data**: Fetch and update game data
-- **Leaderboards**: Retrieve leaderboard information
-- **Admin Actions**: Perform admin-specific actions
+## 👑 Admin Features
 
-## Contributing
+To create an admin user, run the provided script:
+```bash
+cd server
+node scripts/set-admin.js your@email.com
+```
+
+Admin users have access to:
+- User management (view, update roles, delete)
+- Global score statistics
+- Platform usage analytics
+- Game content and settings management
+
+## 🔌 API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Register a new user
+- `POST /api/auth/login` - Login a user
+- `GET /api/auth/me` - Get current user profile
+
+### Scores
+- `POST /api/scores` - Save a new score
+- `GET /api/scores/personal-best` - Get a user's personal best scores
+- `GET /api/scores/leaderboard/:difficulty` - Get leaderboard for a specific difficulty
+
+### Admin
+- `GET /api/admin/users` - Get all users (admin only)
+- `GET /api/admin/users/:id` - Get a specific user's details (admin only)
+- `PUT /api/admin/users/:id/role` - Update a user's role (admin only)
+- `DELETE /api/admin/users/:id` - Delete a user (admin only)
+- `GET /api/admin/scores` - Get all scores (admin only)
+- `GET /api/admin/stats` - Get platform statistics (admin only)
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add some amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgments
+## 🔧 Troubleshooting
+
+### Common Issues
+
+1. **API Connection Issues**
+   - Check that your .env file has the correct API URL
+   - Ensure CORS is properly configured in the backend
+
+2. **Missing Environment Variables**
+   - Make sure all required environment variables are set
+   - For React environment variables, remember they must start with REACT_APP_
+
+3. **Game Rendering Problems**
+   - Clear browser cache and reload
+   - Check browser console for errors
+
+## 🙏 Acknowledgments
 
 - Inspired by the classic Microsoft Minesweeper
 - Thanks to all contributors who have helped improve this project
+
+Created with ❤️ by [Your Name]
