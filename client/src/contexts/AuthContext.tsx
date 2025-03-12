@@ -51,11 +51,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const navigate = useNavigate();
 
   // Initialize axios defaults
-  // const API_URL =
-  //   process.env.REACT_APP_API_URL ||
-  //   "https://minesweeper-backend-o698.onrender.com/api";
-  // axios.defaults.baseURL = API_URL;
-  axios.defaults.baseURL = "http://localhost:5000/api";
+  const API_URL =
+    process.env.REACT_APP_API_URL ||
+    "https://minesweeper-backend-o698.onrender.com/api";
+  axios.defaults.baseURL = API_URL;
+  // axios.defaults.baseURL = "http://localhost:5000/api";
   // Set auth token for all requests if available
   useEffect(() => {
     if (token) {
