@@ -16,10 +16,18 @@ const app = express();
 
 // Security middleware
 app.use(helmet());
+// Update your CORS configuration
+const cors = require('cors');
+
+// Add your deployed frontend URL to the allowed origins
 app.use(cors({
-  origin: 'http://localhost:3000', // Your frontend URL
+  origin: [
+    'http://localhost:3000', 
+    'https://minesweeper-tawny-rho.vercel.app/', // Add your actual deployed frontend URL here
+  ],
   credentials: true
-}));app.use(express.json());
+}));
+app.use(express.json());
 
 // Rate limiting
 const limiter = rateLimit({
