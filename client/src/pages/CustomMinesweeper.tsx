@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 
 // Vibrant color palette
@@ -11,11 +11,16 @@ const GameContainer = styled.div`
   flex-direction: column;
   align-items: center;
   background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
-  padding: 20px;
+  padding: 10px;
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   width: 100%;
   overflow-x: auto;
+  
+  @media (max-width: 768px) {
+    padding: 8px;
+    border-radius: 8px;
+  }
 `;
 
 const Board = styled.div`
@@ -26,6 +31,42 @@ const Board = styled.div`
   border-radius: 10px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   max-width: 100%;
+  
+  @media (max-width: 768px) {
+    gap: 2px;
+    padding: 6px;
+    border-radius: 8px;
+  }
+`;
+
+const GameControls = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+  width: 100%;
+  
+  @media (max-width: 768px) {
+    margin-top: 10px;
+  }
+`;
+
+const FlagToggleButton = styled.button<{ active: boolean }>`
+  display: none;
+  padding: 8px 16px;
+  background: ${props => props.active 
+    ? `linear-gradient(to right, ${GRADIENT_START}, ${GRADIENT_END})` 
+    : 'linear-gradient(135deg, #e6e9f0 0%, #d4d7dd 100%)'};
+  color: ${props => props.active ? 'white' : '#555'};
+  border: none;
+  border-radius: 20px;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  
+  @media (max-width: 768px) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 `;
 
 interface CellProps {
@@ -33,6 +74,8 @@ interface CellProps {
   flagged: boolean;
   mine?: boolean;
   exploded?: boolean;
+  wrongFlag?: boolean;
+  gameOver?: boolean;
   cellSize?: number;
 }
 
@@ -47,6 +90,8 @@ const Cell = styled.div<CellProps>`
   border-radius: 6px;
   background: ${props => {
     if (props.exploded) return '#FF6B6B';
+    if (props.wrongFlag) return '#FFA07A';
+    if (props.mine && props.revealed) return '#ffcccc';
     if (props.revealed) return 'rgba(255, 255, 255, 0.85)';
     return 'linear-gradient(135deg, #e6e9f0 0%, #d4d7dd 100%)';
   }};
@@ -56,22 +101,35 @@ const Cell = styled.div<CellProps>`
       : '0 2px 4px rgba(0, 0, 0, 0.15), inset 0 -2px 0 rgba(0, 0, 0, 0.1)'
   };
   border: ${props => 
-    props.revealed
-      ? '1px solid rgba(0, 0, 0, 0.1)'
-      : '1px solid rgba(255, 255, 255, 0.6)'
+    props.exploded
+      ? '2px solid #ff0000'
+      : props.revealed
+        ? '1px solid rgba(0, 0, 0, 0.1)'
+        : '1px solid rgba(255, 255, 255, 0.6)'
   };
-  cursor: ${props => (props.revealed ? 'default' : 'pointer')};
+  cursor: ${props => (props.revealed || props.gameOver ? 'default' : 'pointer')};
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
   transition: all 0.15s ease;
   transform: ${props => (props.revealed ? 'scale(0.98)' : 'scale(1)')};
 
-  &:hover {
-    background: ${props => {
-      if (props.exploded) return '#FF6B6B';
-      if (props.revealed) return 'rgba(255, 255, 255, 0.85)';
-      return 'linear-gradient(135deg, #e0e3e9 0%, #c8cbd1 100%)';
-    }};
-    transform: ${props => (props.revealed ? 'scale(0.98)' : 'scale(1.05)')};
+  @media (hover: hover) {
+    &:hover {
+      background: ${props => {
+        if (props.exploded) return '#FF6B6B';
+        if (props.wrongFlag) return '#FFA07A';
+        if (props.mine && props.revealed) return '#ffcccc';
+        if (props.revealed) return 'rgba(255, 255, 255, 0.85)';
+        if (props.gameOver) return 'linear-gradient(135deg, #e6e9f0 0%, #d4d7dd 100%)';
+        return 'linear-gradient(135deg, #e0e3e9 0%, #c8cbd1 100%)';
+      }};
+      transform: ${props => (props.revealed || props.gameOver ? 'scale(0.98)' : 'scale(1.05)')};
+    }
+  }
+  
+  &:active {
+    transform: ${props => (props.revealed ? 'scale(0.98)' : 'scale(0.95)')};
   }
 `;
 
@@ -81,6 +139,8 @@ interface CellData {
   flagged: boolean;
   count: number;
   exploded?: boolean;
+  wrongFlag?: boolean;
+  safeToReveal?: boolean;
 }
 
 interface CustomMinesweeperProps {
@@ -91,6 +151,7 @@ interface CustomMinesweeperProps {
   onLose: () => void;
   onCellClick: () => void;
   onFlagChange: (count: number) => void;
+  onCellReveal?: (data: { isCorrectFlag: boolean; isLogicalMove: boolean }) => void;
 }
 
 const getAdjacentCells = (board: CellData[][], x: number, y: number, width: number, height: number) => {
@@ -113,7 +174,7 @@ const getAdjacentCells = (board: CellData[][], x: number, y: number, width: numb
 };
 
 const calculateCounts = (board: CellData[][], width: number, height: number) => {
-  const newBoard = [...board];
+  const newBoard = JSON.parse(JSON.stringify(board));
   
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -142,7 +203,8 @@ const generateBoard = (width: number, height: number, mines: number): CellData[]
       revealed: false, 
       mine: false, 
       flagged: false,
-      count: 0 
+      count: 0,
+      safeToReveal: false
     }))
   );
   
@@ -163,18 +225,42 @@ const generateBoard = (width: number, height: number, mines: number): CellData[]
   return board;
 };
 
-const CustomMinesweeper = ({ width, height, mines, onWin, onLose, onCellClick, onFlagChange }: CustomMinesweeperProps) => {
+const CustomMinesweeper = ({ 
+  width, 
+  height, 
+  mines, 
+  onWin, 
+  onLose, 
+  onCellClick, 
+  onFlagChange,
+  onCellReveal
+}: CustomMinesweeperProps) => {
   const [board, setBoard] = useState<CellData[][]>(generateBoard(width, height, mines));
   const [gameOver, setGameOver] = useState(false);
   const [firstClick, setFirstClick] = useState(true);
   const [flagCount, setFlagCount] = useState(0);
   const [explodedCell, setExplodedCell] = useState<{x: number, y: number} | null>(null);
+  const [flagMode, setFlagMode] = useState(false);
   
-  // Calculate cell size based on difficulty
+  // Touch handling state
+  const [touchTimer, setTouchTimer] = useState<NodeJS.Timeout | null>(null);
+  const [touchedCell, setTouchedCell] = useState<{x: number, y: number} | null>(null);
+  
+  // Calculate cell size based on difficulty and screen size
   const getCellSize = () => {
-    if (width > 20) return 24; // Expert level
-    if (width > 12) return 28; // Intermediate level
-    return 32; // Beginner level
+    const isMobile = window.innerWidth < 768;
+    
+    if (isMobile) {
+      // Smaller cells on mobile
+      if (width > 20) return 18; // Expert
+      if (width > 12) return 22; // Intermediate
+      return 28; // Beginner
+    } else {
+      // Desktop cell sizes
+      if (width > 20) return 24; // Expert
+      if (width > 12) return 28; // Intermediate
+      return 32; // Beginner
+    }
   };
   
   const cellSize = getCellSize();
@@ -201,8 +287,56 @@ const CustomMinesweeper = ({ width, height, mines, onWin, onLose, onCellClick, o
     }
   }, [board, gameOver, firstClick]);
 
+  // Handle touchstart event for long-press detection
+  const handleTouchStart = (x: number, y: number) => {
+    if (gameOver || board[y][x].revealed) return;
+    
+    setTouchedCell({x, y});
+    
+    // Set a timer for long press detection
+    const timer = setTimeout(() => {
+      // Long press detected, toggle flag
+      handleFlagToggle(x, y);
+      setTouchTimer(null);
+    }, 500); // 500ms for long press
+    
+    setTouchTimer(timer);
+  };
+  
+  // Handle touchend event to clear timer
+  const handleTouchEnd = () => {
+    if (touchTimer) {
+      clearTimeout(touchTimer);
+      setTouchTimer(null);
+    }
+    
+    // If there's a touchedCell and the timer was cleared before executing,
+    // it means it was a tap, not a long press
+    if (touchedCell && !flagMode) {
+      const { x, y } = touchedCell;
+      revealCell(x, y);
+    }
+    
+    setTouchedCell(null);
+  };
+
+  // Handle touchmove to prevent accidental reveals
+  const handleTouchMove = () => {
+    if (touchTimer) {
+      clearTimeout(touchTimer);
+      setTouchTimer(null);
+    }
+    setTouchedCell(null);
+  };
+
   const revealCell = (x: number, y: number) => {
     if (gameOver || board[y][x].revealed || board[y][x].flagged) return;
+    
+    // If in flag mode on mobile, toggle flag instead of revealing
+    if (flagMode) {
+      handleFlagToggle(x, y);
+      return;
+    }
     
     if (firstClick) {
       setFirstClick(false);
@@ -210,8 +344,8 @@ const CustomMinesweeper = ({ width, height, mines, onWin, onLose, onCellClick, o
       
       // Ensure first click is never a mine
       if (board[y][x].mine) {
-        // Move the mine to another location
-        const newBoard = [...board];
+        // Create a proper deep copy for the board
+        const newBoard = JSON.parse(JSON.stringify(board));
         newBoard[y][x].mine = false;
         
         // Find a new place for the mine
@@ -226,57 +360,96 @@ const CustomMinesweeper = ({ width, height, mines, onWin, onLose, onCellClick, o
           }
         }
         
-        // Recalculate counts
-        setBoard(calculateCounts(newBoard, width, height));
+        // Recalculate counts and set the board
+        const recalculatedBoard = calculateCounts(newBoard, width, height);
+        setBoard(recalculatedBoard);
+        
+        // Call revealCell again to actually reveal the cell after moving the mine
+        setTimeout(() => {
+          revealCell(x, y);
+        }, 0);
+        return;
       }
     }
     
-    let newBoard = [...board];
+    // Create a proper deep copy of the board
+    let newBoard = JSON.parse(JSON.stringify(board));
     
-    // Recursive reveal for empty cells
-    const revealRecursive = (x: number, y: number) => {
-      if (x < 0 || x >= width || y < 0 || y >= height || newBoard[y][x].revealed || newBoard[y][x].flagged) {
-        return;
-      }
-      
-      newBoard[y][x].revealed = true;
-      
-      if (newBoard[y][x].count === 0) {
-        getAdjacentCells(newBoard, x, y, width, height).forEach(cell => {
-          revealRecursive(cell.x, cell.y);
-        });
-      }
-    };
+    // Check if this is a logical move
+    const isLogicalMove = newBoard[y][x].safeToReveal === true;
+    
+    // Report the cell reveal with whether it's a logical move
+    if (onCellReveal) {
+      onCellReveal({
+        isCorrectFlag: false,
+        isLogicalMove: isLogicalMove || false
+      });
+    }
     
     if (board[y][x].mine) {
       // Mark the exploded cell
       setExplodedCell({x, y});
       
-      // Reveal all mines when player hits a mine
-      newBoard = newBoard.map((row, rowIdx) => 
-        row.map((cell, colIdx) => {
+      // When player hits a mine, reveal the entire board with special states
+      newBoard = newBoard.map((row: CellData[], rowIdx: number) => 
+        row.map((cell: CellData, colIdx: number) => {
+          // The exploded mine
           if (rowIdx === y && colIdx === x) {
             return { ...cell, revealed: true, exploded: true };
+          } 
+          // Correctly flagged mines - leave flagged
+          else if (cell.mine && cell.flagged) {
+            return { ...cell };
+          } 
+          // Wrong flags - show as wrong
+          else if (cell.flagged && !cell.mine) {
+            return { ...cell, revealed: true, wrongFlag: true };
+          } 
+          // Other mines - reveal them
+          else if (cell.mine) {
+            return { ...cell, revealed: true };
           }
-          return cell.mine ? { ...cell, revealed: true } : cell;
+          // Safe cells - reveal them all for a better game over experience
+          else {
+            return { ...cell, revealed: true };
+          }
         })
       );
+      
+      // First update the board state
       setBoard(newBoard);
+      
+      // Then set game over and call onLose after a short delay
       setGameOver(true);
-      onLose();
+      setTimeout(() => {
+        onLose();
+      }, 150);
     } else {
+      // Recursive reveal for empty cells
+      const revealRecursive = (x: number, y: number) => {
+        if (x < 0 || x >= width || y < 0 || y >= height || newBoard[y][x].revealed || newBoard[y][x].flagged) {
+          return;
+        }
+        
+        newBoard[y][x].revealed = true;
+        
+        if (newBoard[y][x].count === 0) {
+          getAdjacentCells(newBoard, x, y, width, height).forEach(cell => {
+            revealRecursive(cell.x, cell.y);
+          });
+        }
+      };
+      
       // Reveal current cell and adjacent empty cells
       revealRecursive(x, y);
-      setBoard([...newBoard]);
+      setBoard(newBoard);
     }
   };
-
-  const handleContextMenu = (e: React.MouseEvent, x: number, y: number) => {
-    e.preventDefault();
-    
+  
+  const handleFlagToggle = (x: number, y: number) => {
     if (gameOver || board[y][x].revealed) return;
     
-    const newBoard = [...board];
+    const newBoard = JSON.parse(JSON.stringify(board));
     newBoard[y][x] = {
       ...newBoard[y][x],
       flagged: !newBoard[y][x].flagged
@@ -284,14 +457,34 @@ const CustomMinesweeper = ({ width, height, mines, onWin, onLose, onCellClick, o
     
     setBoard(newBoard);
     
-    const newFlagCount = newBoard.flat().filter(cell => cell.flagged).length;
+    const newFlagCount = newBoard.flat().filter((cell: CellData) => cell.flagged).length;
     setFlagCount(newFlagCount);
     onFlagChange(newFlagCount);
+    
+    // Report correct flag placement if applicable
+    if (!newBoard[y][x].flagged && onCellReveal) {
+      onCellReveal({
+        isCorrectFlag: newBoard[y][x].mine,
+        isLogicalMove: false
+      });
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, x: number, y: number) => {
+    e.preventDefault();
+    handleFlagToggle(x, y);
   };
 
   const getCellContent = (cell: CellData) => {
+    if (cell.flagged) {
+      if (cell.wrongFlag) {
+        return '❌'; // Wrong flag
+      }
+      return '🚩'; // Flag
+    }
+    
     if (!cell.revealed) {
-      return cell.flagged ? '🚩' : '';
+      return '';
     }
     
     if (cell.mine) {
@@ -316,9 +509,6 @@ const CustomMinesweeper = ({ width, height, mines, onWin, onLose, onCellClick, o
     return count > 0 && count < numberColors.length ? numberColors[count] : '#222222';
   };
 
-  // Calculate the total width including gap and padding
-  const boardWidth = width * (cellSize + 3) + 16;
-  
   return (
     <GameContainer>
       <Board style={{ 
@@ -330,16 +520,32 @@ const CustomMinesweeper = ({ width, height, mines, onWin, onLose, onCellClick, o
             key={`${x}-${y}`} 
             revealed={cell.revealed} 
             flagged={cell.flagged}
+            mine={cell.mine}
             exploded={cell.exploded}
+            wrongFlag={cell.wrongFlag}
+            gameOver={gameOver}
             cellSize={cellSize}
             onClick={() => revealCell(x, y)}
             onContextMenu={(e) => handleContextMenu(e, x, y)}
+            onTouchStart={() => handleTouchStart(x, y)}
+            onTouchEnd={handleTouchEnd}
+            onTouchMove={handleTouchMove}
             style={{ color: getCellColor(cell.count) }}
           >
             {getCellContent(cell)}
           </Cell>
         )))}
       </Board>
+      
+      {/* Mobile flag toggle button */}
+      <GameControls>
+        <FlagToggleButton 
+          active={flagMode} 
+          onClick={() => setFlagMode(!flagMode)}
+        >
+          {flagMode ? '🚩' : '👆'} {flagMode ? 'Flag Mode' : 'Dig Mode'}
+        </FlagToggleButton>
+      </GameControls>
     </GameContainer>
   );
 };

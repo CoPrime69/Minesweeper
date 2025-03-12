@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { getPersonalBests } from '../services/api';
@@ -26,6 +26,17 @@ const ProfilePage: React.FC = () => {
   const [scores, setScores] = useState<Score[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'beginner' | 'intermediate' | 'expert'>('beginner');
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Check for mobile screen size
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -58,6 +69,19 @@ const ProfilePage: React.FC = () => {
     // Otherwise infer from score (higher scores are winning games)
     return score.score >= WIN_SCORE_THRESHOLDS[score.difficulty as keyof typeof WIN_SCORE_THRESHOLDS];
   };
+
+  // Format date based on device
+  const formatDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    
+    if (isMobile) {
+      // Shorter format for mobile: MM/DD, HH:MM
+      return `${date.getMonth() + 1}/${date.getDate()}, ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+    } else {
+      // Full format for desktop
+      return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    }
+  }, [isMobile]);
 
   // Filter scores by difficulty
   const filteredScores = scores.filter(score => score.difficulty === activeTab);
@@ -218,7 +242,7 @@ const ProfilePage: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="bg-white rounded-lg shadow overflow-x-auto"> {/* Added overflow-x-auto here */}
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -240,7 +264,7 @@ const ProfilePage: React.FC = () => {
                       {filteredScores.map((score, index) => (
                         <tr key={score._id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(score.date).toLocaleDateString()} {new Date(score.date).toLocaleTimeString()}
+                            {formatDate(score.date)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {score.score}

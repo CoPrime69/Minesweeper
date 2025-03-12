@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { saveScore } from "../services/api";
 import { AuthContext } from "../contexts/AuthContext";
 import { toast } from "react-toastify";
-import CustomMinesweeper from "./CustomMinesweeper"; // Custom-built Minesweeper component
+import CustomMinesweeper from "./CustomMinesweeper"; 
 
 // Matching color palette from navbar
 const COLORS = ['#FF6B6B', '#4ECDC4', '#FFD166', '#6A0572', '#AB83A1'];
