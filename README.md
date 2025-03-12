@@ -46,6 +46,7 @@ A modern, full-stack implementation of the classic Minesweeper game with user au
 - Express Rate Limit for API security
 
 ## 📂 Project Structure
+```
 
 minesweeper-platform/
 ├── client/                 # Frontend React application
@@ -62,3 +63,5 @@ minesweeper-platform/
     ├── routes/             # API routes
     ├── scripts/            # Utility scripts
     └── server.js           # Main server entry point
+
+```
