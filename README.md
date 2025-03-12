@@ -2,8 +2,6 @@
 
 A modern, full-stack implementation of the classic Minesweeper game with user authentication, leaderboards, and admin dashboard.
 
-![Minesweeper Platform](https://i.imgur.com/placeholder-image.png)
-
 ## 📋 Table of Contents
 - [Features](#features)
 - [Technology Stack](#technology-stack)
@@ -32,7 +30,7 @@ A modern, full-stack implementation of the classic Minesweeper game with user au
 - **Timer and Score Tracking**: Keep track of your best times and scores
 - **Flagging System**: Mark potential mines with flags or question marks
 
-# Features to be added
+### Features to be added
 - **First-click Protection**: Never hit a mine on your first click
 - **Customizable Themes**: Multiple visual themes to choose from
 - **Save/Load Game**: Pause and resume your game later
