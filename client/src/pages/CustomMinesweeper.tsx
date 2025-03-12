@@ -81,7 +81,6 @@ interface CellData {
   flagged: boolean;
   count: number;
   exploded?: boolean;
-  safeToReveal: boolean; // Used for logical move detection
 }
 
 interface CustomMinesweeperProps {
@@ -92,7 +91,6 @@ interface CustomMinesweeperProps {
   onLose: () => void;
   onCellClick: () => void;
   onFlagChange: (count: number) => void;
-  onCellReveal?: (info: { isCorrectFlag: boolean, isLogicalMove: boolean }) => void;
 }
 
 const getAdjacentCells = (board: CellData[][], x: number, y: number, width: number, height: number) => {
@@ -144,8 +142,7 @@ const generateBoard = (width: number, height: number, mines: number): CellData[]
       revealed: false, 
       mine: false, 
       flagged: false,
-      count: 0,
-      safeToReveal: false 
+      count: 0 
     }))
   );
   
@@ -166,72 +163,7 @@ const generateBoard = (width: number, height: number, mines: number): CellData[]
   return board;
 };
 
-// Define return type for calculateSafeCells
-interface SafeCellsResult {
-  newBoard: CellData[][];
-  foundSafeCells: boolean;
-}
-
-// Helper to check if a move is logical (100% safe)
-const calculateSafeCells = (board: CellData[][], width: number, height: number): SafeCellsResult => {
-  const newBoard = JSON.parse(JSON.stringify(board));
-  let foundSafeCells = false;
-  
-  // Iterate through all revealed cells
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      if (newBoard[y][x].revealed && !newBoard[y][x].mine) {
-        const adjacentCells = getAdjacentCells(newBoard, x, y, width, height);
-        
-        // Count adjacent flagged cells and unrevealed cells
-        let flaggedCount = 0;
-        const unrevealedCells = [];
-        
-        for (const cell of adjacentCells) {
-          if (newBoard[cell.y][cell.x].flagged) {
-            flaggedCount++;
-          } else if (!newBoard[cell.y][cell.x].revealed) {
-            unrevealedCells.push(cell);
-          }
-        }
-        
-        // If the number of adjacent mines equals the number of flags placed,
-        // all other adjacent unrevealed cells are safe
-        if (newBoard[y][x].count === flaggedCount && unrevealedCells.length > 0) {
-          unrevealedCells.forEach(cell => {
-            newBoard[cell.y][cell.x].safeToReveal = true;
-            foundSafeCells = true;
-          });
-        }
-        
-        // If the number of unrevealed cells equals the number of remaining mines,
-        // all should be flagged
-        if (newBoard[y][x].count - flaggedCount === unrevealedCells.length && unrevealedCells.length > 0) {
-          unrevealedCells.forEach(cell => {
-            // Mark for flagging - in a real solver we would flag these
-            // but for our purposes we just need to know they're mines
-            if (!newBoard[cell.y][cell.x].flagged) {
-              foundSafeCells = true;
-            }
-          });
-        }
-      }
-    }
-  }
-  
-  return { newBoard, foundSafeCells };
-};
-
-const CustomMinesweeper = ({ 
-  width, 
-  height, 
-  mines, 
-  onWin, 
-  onLose, 
-  onCellClick, 
-  onFlagChange,
-  onCellReveal
-}: CustomMinesweeperProps) => {
+const CustomMinesweeper = ({ width, height, mines, onWin, onLose, onCellClick, onFlagChange }: CustomMinesweeperProps) => {
   const [board, setBoard] = useState<CellData[][]>(generateBoard(width, height, mines));
   const [gameOver, setGameOver] = useState(false);
   const [firstClick, setFirstClick] = useState(true);
@@ -269,17 +201,6 @@ const CustomMinesweeper = ({
     }
   }, [board, gameOver, firstClick]);
 
-  // Analyze board for safe moves periodically or when state changes
-  useEffect(() => {
-    if (!gameOver && !firstClick) {
-      const { newBoard, foundSafeCells } = calculateSafeCells(board, width, height);
-      
-      if (foundSafeCells) {
-        setBoard(newBoard);
-      }
-    }
-  }, [board, gameOver, firstClick]);
-
   const revealCell = (x: number, y: number) => {
     if (gameOver || board[y][x].revealed || board[y][x].flagged) return;
     
@@ -312,9 +233,6 @@ const CustomMinesweeper = ({
     
     let newBoard = [...board];
     
-    // Check if this is a logical move
-    const isLogicalMove = newBoard[y][x].safeToReveal === true;
-    
     // Recursive reveal for empty cells
     const revealRecursive = (x: number, y: number) => {
       if (x < 0 || x >= width || y < 0 || y >= height || newBoard[y][x].revealed || newBoard[y][x].flagged) {
@@ -329,14 +247,6 @@ const CustomMinesweeper = ({
         });
       }
     };
-    
-    // Report the cell reveal with whether it's a logical move
-    if (onCellReveal) {
-      onCellReveal({
-        isCorrectFlag: false,
-        isLogicalMove
-      });
-    }
     
     if (board[y][x].mine) {
       // Mark the exploded cell
@@ -366,14 +276,10 @@ const CustomMinesweeper = ({
     
     if (gameOver || board[y][x].revealed) return;
     
-    // Toggle flag state
-    const isAddingFlag = !board[y][x].flagged;
-    const isCorrectFlag = isAddingFlag && board[y][x].mine;
-    
     const newBoard = [...board];
     newBoard[y][x] = {
       ...newBoard[y][x],
-      flagged: isAddingFlag
+      flagged: !newBoard[y][x].flagged
     };
     
     setBoard(newBoard);
@@ -381,14 +287,6 @@ const CustomMinesweeper = ({
     const newFlagCount = newBoard.flat().filter(cell => cell.flagged).length;
     setFlagCount(newFlagCount);
     onFlagChange(newFlagCount);
-    
-    // Report flag placement to parent component, if the callback exists
-    if (isAddingFlag && onCellReveal) {
-      onCellReveal({
-        isCorrectFlag: isCorrectFlag,
-        isLogicalMove: newBoard[y][x].safeToReveal === false // Flagging is not a "safe move"
-      });
-    }
   };
 
   const getCellContent = (cell: CellData) => {
