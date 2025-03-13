@@ -204,8 +204,15 @@ const GamePage: React.FC = () => {
         try {
           setIsLoading(true);
           const scores = await getPersonalBests();
-          setPersonalBests(scores);
-          console.log("Loaded personal bests:", scores); // Debug log to check loaded scores
+          
+          // Normalize difficulty strings for consistent comparison
+          const normalizedScores = scores.map((score: any) => ({
+            ...score,
+            difficulty: score.difficulty.toLowerCase()
+          }));
+          
+          setPersonalBests(normalizedScores);
+          console.log("Loaded personal bests:", normalizedScores);
         } catch (error) {
           console.error("Failed to load personal bests:", error);
           toast.error("Failed to load your scores");
@@ -222,38 +229,37 @@ const GamePage: React.FC = () => {
 
   const [gameCompletionCount, setGameCompletionCount] = useState(0);
 
-  const handleGameComplete = async (
-    score: number,
-    difficulty: string,
-    won: boolean,
-    // gameStats = { cellsRevealed: 0, flagsPlaced: 0 }
-  ) => {
-    // Update previous game stats
-    setPreviousGameStat({
-      difficulty,
-      score,
-      time: score > 0 ? score / 10 : 0, // Assuming score calculation is based on time
-      won,
-      date: new Date(),
-      // cellsRevealed: gameStats.cellsRevealed,
-      // flagsPlaced: gameStats.flagsPlaced
-    });
+  // Update the handleGameComplete function to accept time as a direct parameter
+const handleGameComplete = async (
+  score: number,
+  difficulty: string,
+  won: boolean,
+  time: number  // Add time parameter
+) => {
+  // Update previous game stats with the actual time from the game
+  setPreviousGameStat({
+    difficulty,
+    score,
+    time: time, // Use the actual time directly
+    won,
+    date: new Date(),
+  });
 
-    // Increment the counter to trigger a re-render
-    setGameCompletionCount((prev) => prev + 1);
+  // Increment the counter to trigger a re-render
+  setGameCompletionCount((prev) => prev + 1);
 
-    if (isAuthenticated) {
-      try {
-        // Add a small delay to ensure the database has been updated
-        setTimeout(async () => {
-          const scores = await getPersonalBests();
-          setPersonalBests(scores);
-        }, 500);
-      } catch (error) {
-        console.error("Failed to refresh personal bests:", error);
-      }
+  if (isAuthenticated) {
+    try {
+      // Add a small delay to ensure the database has been updated
+      setTimeout(async () => {
+        const scores = await getPersonalBests();
+        setPersonalBests(scores);
+      }, 500);
+    } catch (error) {
+      console.error("Failed to refresh personal bests:", error);
     }
-  };
+  }
+};
 
   // Add this effect to fetch personal bests whenever the game completion count changes
   useEffect(() => {
@@ -289,15 +295,17 @@ const GamePage: React.FC = () => {
   // };
 
   // Group personal bests by difficulty - Fix: Use case-insensitive comparison
-  const beginnerScores = personalBests.filter(
-    (score) => score.difficulty.toLowerCase() === "beginner"
-  );
-  const intermediateScores = personalBests.filter(
-    (score) => score.difficulty.toLowerCase() === "intermediate"
-  );
-  const expertScores = personalBests.filter(
-    (score) => score.difficulty.toLowerCase() === "expert"
-  );
+  const beginnerScores = personalBests
+    .filter(score => score.difficulty.toLowerCase() === "beginner")
+    .sort((a, b) => b.score - a.score); // Sort by score desc
+
+  const intermediateScores = personalBests
+    .filter(score => score.difficulty.toLowerCase() === "intermediate")
+    .sort((a, b) => b.score - a.score);
+
+  const expertScores = personalBests
+    .filter(score => score.difficulty.toLowerCase() === "expert")
+    .sort((a, b) => b.score - a.score);
 
   return (
     <PageContainer>

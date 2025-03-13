@@ -10,15 +10,15 @@ interface Score {
   score: number;
   time: number;
   date: string;
-  won?: boolean; // Add this field if available
+  won: boolean; // Add this field if available
 }
 
 // Score thresholds that indicate a winning game
-const WIN_SCORE_THRESHOLDS = {
-  beginner: 50,
-  intermediate: 125,
-  expert: 200
-};
+// const WIN_SCORE_THRESHOLDS = {
+//   beginner: 50,
+//   intermediate: 125,
+//   expert: 200
+// };
 
 const ProfilePage: React.FC = () => {
   const { user, isAuthenticated, logout } = useContext(AuthContext);
@@ -48,8 +48,15 @@ const ProfilePage: React.FC = () => {
       try {
         setLoading(true);
         const data = await getPersonalBests();
-        console.log('Fetched scores:', data); // Debug to see score structure
-        setScores(data);
+        console.log('Fetched scores:', data); 
+        
+        // Normalize difficulty strings for consistent comparison
+        const normalizedData = data.map((score: any) => ({
+          ...score,
+          difficulty: score.difficulty.toLowerCase()
+        }));
+        
+        setScores(normalizedData);
       } catch (error) {
         console.error('Failed to fetch scores:', error);
         toast.error('Failed to load your scores');
@@ -64,10 +71,11 @@ const ProfilePage: React.FC = () => {
   // Helper function to determine if a score represents a winning game
   const isWinningGame = (score: Score): boolean => {
     // First check explicit won field if available
-    if (score.won !== undefined) return score.won;
+    // if (score.won !== undefined) return score.won;
     
-    // Otherwise infer from score (higher scores are winning games)
-    return score.score >= WIN_SCORE_THRESHOLDS[score.difficulty as keyof typeof WIN_SCORE_THRESHOLDS];
+    // // Otherwise infer from score (higher scores are winning games)
+    // return score.score >= WIN_SCORE_THRESHOLDS[score.difficulty as keyof typeof WIN_SCORE_THRESHOLDS];
+    return score.won
   };
 
   // Format date based on device
@@ -83,26 +91,34 @@ const ProfilePage: React.FC = () => {
     }
   }, [isMobile]);
 
-  // Filter scores by difficulty
-  const filteredScores = scores.filter(score => score.difficulty === activeTab);
+  // Filter scores by difficulty with case-insensitive comparison
+  const filteredScores = scores.filter(score => 
+    score.difficulty.toLowerCase() === activeTab.toLowerCase()
+  );
 
-  // Calculate stats
+  // Calculate stats with case-insensitive comparisons
   const totalGames = scores.length;
-  const beginnerGames = scores.filter(score => score.difficulty === 'beginner').length;
-  const intermediateGames = scores.filter(score => score.difficulty === 'intermediate').length;
-  const expertGames = scores.filter(score => score.difficulty === 'expert').length;
+  const beginnerGames = scores.filter(score => 
+    score.difficulty.toLowerCase() === 'beginner'
+  ).length;
+  const intermediateGames = scores.filter(score => 
+    score.difficulty.toLowerCase() === 'intermediate'
+  ).length;
+  const expertGames = scores.filter(score => 
+    score.difficulty.toLowerCase() === 'expert'
+  ).length;
 
-  // Best times - ONLY use winning games
+  // Best times - ONLY use winning games with case-insensitivity
   const winningBeginnerScores = scores.filter(
-    score => score.difficulty === 'beginner' && isWinningGame(score)
+    score => score.difficulty.toLowerCase() === 'beginner' && score.won
   );
   
   const winningIntermediateScores = scores.filter(
-    score => score.difficulty === 'intermediate' && isWinningGame(score)
+    score => score.difficulty.toLowerCase() === 'intermediate' && score.won
   );
   
   const winningExpertScores = scores.filter(
-    score => score.difficulty === 'expert' && isWinningGame(score)
+    score => score.difficulty.toLowerCase() === 'expert' && score.won
   );
   
   // Get best times from winning scores
@@ -273,7 +289,7 @@ const ProfilePage: React.FC = () => {
                             {score.time.toFixed(1)}s
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            {isWinningGame(score) ? (
+                            {score.won ? (
                               <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                 Won
                               </span>

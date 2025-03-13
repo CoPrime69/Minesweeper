@@ -5,6 +5,7 @@ export const saveScore = async (scoreData: {
   difficulty: string;
   time: number;
   score: number;
+  won: boolean;
 }) => {
   const response = await axios.post('/scores', scoreData);
   return response.data;

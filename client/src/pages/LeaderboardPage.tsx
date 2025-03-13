@@ -25,21 +25,22 @@ const LeaderboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        setLoading(true);
-        const data = await getLeaderboard(difficulty);
-        setScores(data);
-      } catch (error) {
-        console.error('Failed to fetch leaderboard:', error);
-        toast.error('Failed to load leaderboard');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchLeaderboard = async () => {
+    try {
+      setLoading(true);
+      // Always send lowercase difficulty to API
+      const data = await getLeaderboard(difficulty.toLowerCase());
+      setScores(data);
+    } catch (error) {
+      console.error('Failed to fetch leaderboard:', error);
+      toast.error('Failed to load leaderboard');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchLeaderboard();
-  }, [difficulty]);
+  fetchLeaderboard();
+}, [difficulty]);
 
   // Get color for difficulty
   const getDifficultyColor = (diff: string): string => {
