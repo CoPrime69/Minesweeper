@@ -8,6 +8,25 @@ const COLORS = ['#FF6B6B', '#4ECDC4', '#FFD166', '#6A0572', '#AB83A1'];
 const GRADIENT_START = '#5533FF';
 const GRADIENT_END = '#2B8EFF';
 
+// Add new InfoBanner component
+const InfoBanner = () => (
+  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded shadow-sm">
+    <div className="flex">
+      <div className="flex-shrink-0">
+        <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1-5.3a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+        </svg>
+      </div>
+      <div className="ml-3">
+        <h3 className="text-sm leading-5 font-medium text-blue-700">Please Note</h3>
+        <div className="mt-1 text-sm leading-5 text-blue-600">
+          If you're using the deployed website, it might take 2-3 minutes for the backend to start up. Thank you for your patience!
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const RegisterPage: React.FC = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -79,6 +98,9 @@ const RegisterPage: React.FC = () => {
             </Link>
           </p>
         </div>
+        
+        {/* Add InfoBanner here */}
+        <InfoBanner />
         
         <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
           <form className="space-y-5" onSubmit={handleSubmit}>

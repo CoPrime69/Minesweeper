@@ -154,9 +154,10 @@ interface CustomMinesweeperProps {
   onLose: () => void;
   onCellClick: () => void;
   onFlagChange: (count: number) => void;
-  onCellReveal?: (data: {
-    isCorrectFlag: boolean;
-    isLogicalMove: boolean;
+  onCellReveal?: (stats: {
+    isCorrectFlag?: boolean;
+    isWrongFlag?: boolean;
+    isLogicalMove?: boolean;
   }) => void;
 }
 
@@ -440,6 +441,17 @@ const CustomMinesweeper = ({
     }
 
     // Otherwise proceed with normal reveal
+    const isLogicalMove = board[y][x].safeToReveal === true;
+
+    // Report the cell reveal with whether it's a logical move
+    if (onCellReveal) {
+      onCellReveal({
+        isCorrectFlag: false,
+        isWrongFlag: false,
+        isLogicalMove: isLogicalMove || false,
+      });
+    }
+
     revealCellOnBoard(board, x, y);
   };
 
@@ -554,11 +566,14 @@ const CustomMinesweeper = ({
     setFlagCount(newFlagCount);
     onFlagChange(newFlagCount);
 
-    // Report correct flag placement if applicable
-    if (!newBoard[y][x].flagged && onCellReveal) {
+    // Track if this was a correct or wrong flag placement
+    const isCorrectFlag = newBoard[y][x].mine;
+    const isWrongFlag = !newBoard[y][x].mine;
+
+    if (onCellReveal) {
       onCellReveal({
-        isCorrectFlag: newBoard[y][x].mine,
-        isLogicalMove: false,
+        isCorrectFlag,
+        isWrongFlag,
       });
     }
   };

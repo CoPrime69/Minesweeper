@@ -149,7 +149,12 @@ const PlayAgainButton = styled(GameButton)`
 `;
 
 interface GameProps {
-  onGameComplete?: (score: number, difficulty: string, won: boolean, time: number) => void;
+  onGameComplete?: (
+    score: number,
+    difficulty: string,
+    won: boolean,
+    time: number
+  ) => void;
 }
 
 type DifficultyLevel = "beginner" | "intermediate" | "expert";
@@ -178,6 +183,39 @@ const MinesweeperGame: React.FC<GameProps> = ({ onGameComplete }) => {
     gameStarted: false,
   });
 
+  // Add these new state variables to track game statistics
+  const [gameStats, setGameStats] = useState({
+    cellsOpened: 0,
+    correctFlags: 0,
+    wrongFlags: 0,
+  });
+
+  // Add a new state for score breakdown
+  const [scoreBreakdown, setScoreBreakdown] = useState<{
+    baseScore: number;
+    cellOpeningPoints: number;
+    correctFlagPoints: number;
+    wrongFlagPenalty: number;
+    timeDecay: number;
+    winBonus?: number;
+    finalScore: number;
+  } | null>(null);
+
+  // Add this function to update game stats when cells are revealed or flags are placed
+  const updateGameStats = (stats: {
+    cellRevealed?: boolean;
+    isCorrectFlag?: boolean;
+    isWrongFlag?: boolean;
+  }) => {
+    setGameStats((prev) => ({
+      cellsOpened: stats.cellRevealed ? prev.cellsOpened + 1 : prev.cellsOpened,
+      correctFlags: stats.isCorrectFlag
+        ? prev.correctFlags + 1
+        : prev.correctFlags,
+      wrongFlags: stats.isWrongFlag ? prev.wrongFlags + 1 : prev.wrongFlags,
+    }));
+  };
+
   // Start/stop timer based on game status
   useEffect(() => {
     if (gameState.status === "playing") {
@@ -200,6 +238,7 @@ const MinesweeperGame: React.FC<GameProps> = ({ onGameComplete }) => {
     resetGame();
   }, [difficulty]);
 
+  // Reset game stats when resetting the game
   const resetGame = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -213,6 +252,12 @@ const MinesweeperGame: React.FC<GameProps> = ({ onGameComplete }) => {
       flagsPlaced: 0,
     });
     setTime(0);
+    setGameStats({
+      cellsOpened: 0,
+      correctFlags: 0,
+      wrongFlags: 0,
+    });
+    setScoreBreakdown(null);
   };
 
   const handleGameStart = () => {
@@ -238,6 +283,7 @@ const MinesweeperGame: React.FC<GameProps> = ({ onGameComplete }) => {
     }
   };
 
+  // Replace the existing handleGameWin function with this improved version
   const handleGameWin = async () => {
     const endTime = Date.now();
     const timeTaken = Math.floor((endTime - gameState.startTime) / 1000);
@@ -248,38 +294,96 @@ const MinesweeperGame: React.FC<GameProps> = ({ onGameComplete }) => {
       endTime: endTime,
     });
 
-    // Base scores for each difficulty (balanced values)
-    const baseScores = {
-      beginner: 100,
-      intermediate: 250,
-      expert: 400,
+    // Enhanced scoring system parameters
+    const difficultyParams = {
+      beginner: {
+        baseScore: 100,
+        pointsPerCell: 2,
+        pointsPerCorrectFlag: 5,
+        penaltyPerWrongFlag: -10,
+        timeDecay: 0.3,
+        winBonus: 50,
+      },
+      intermediate: {
+        baseScore: 250,
+        pointsPerCell: 3,
+        pointsPerCorrectFlag: 8,
+        penaltyPerWrongFlag: -15,
+        timeDecay: 0.2,
+        winBonus: 100,
+      },
+      expert: {
+        baseScore: 400,
+        pointsPerCell: 4,
+        pointsPerCorrectFlag: 10,
+        penaltyPerWrongFlag: -20,
+        timeDecay: 0.1,
+        winBonus: 150,
+      },
     };
 
-    // Time factors - how many points to deduct per second
-    const timeFactors = {
-      beginner: 0.5, // More forgiving time penalty
-      intermediate: 0.4, // Medium time penalty
-      expert: 0.3, // Less penalty per second because expert takes longer
-    };
+    const params = difficultyParams[difficulty];
 
-    // Calculate score based on difficulty, time, and remaining mines
-    const baseScore = baseScores[difficulty];
-    const timePenalty = Math.min(
-      timeFactors[difficulty] * timeTaken,
-      baseScore * 0.7
-    ); // Cap time penalty at 70% of base score
+    // Calculate total board size and safe cells
+    const totalCells =
+      difficultySettings[difficulty].width *
+      difficultySettings[difficulty].height;
+    const safeCells = totalCells - difficultySettings[difficulty].mines;
 
-    // Bonus for efficiency (remaining mines vs total mines ratio can give up to 30% bonus)
-    const minesEfficiency =
-      gameState.flagsPlaced / difficultySettings[difficulty].mines;
-    const efficiencyBonus =
-      minesEfficiency > 0.9 ? baseScore * 0.3 : baseScore * 0.15; // 30% bonus for using flags efficiently
+    // Calculate each component of the score
+    const baseScore = params.baseScore;
 
-    // Final score calculation with minimum score floor
-    const score = Math.max(
-      Math.round(baseScore - timePenalty + efficiencyBonus),
-      10
+    // Points for cells opened (all safe cells should be opened in a win)
+    const cellOpeningPoints = safeCells * params.pointsPerCell;
+
+    // Points for correct flags (all mines should be correctly flagged in an optimal win)
+    const mineCount = difficultySettings[difficulty].mines;
+    const correctFlagPoints =
+      Math.min(gameStats.correctFlags, mineCount) * params.pointsPerCorrectFlag;
+
+    // Penalty for wrong flags
+    const wrongFlagPenalty = gameStats.wrongFlags * params.penaltyPerWrongFlag;
+
+    // Time decay (capped at 40% of base score)
+    const timeDecayMax = baseScore * 0.4;
+    const timeDecay = Math.min(timeTaken * params.timeDecay, timeDecayMax);
+
+    // Win bonus
+    const winBonus = params.winBonus;
+
+    // Calculate final score (ensure minimum score is 10)
+    let score = Math.round(
+      baseScore +
+        cellOpeningPoints +
+        correctFlagPoints +
+        wrongFlagPenalty -
+        timeDecay +
+        winBonus
     );
+
+    score = Math.max(score, 10);
+
+    console.log(`Score breakdown:
+      Base score: ${baseScore}
+      Cell opening: +${cellOpeningPoints} (${safeCells} cells)
+      Correct flags: +${correctFlagPoints} (${gameStats.correctFlags} flags)
+      Wrong flags: ${wrongFlagPenalty} (${gameStats.wrongFlags} flags)
+      Time decay: -${timeDecay.toFixed(1)} (${timeTaken}s)
+      Win bonus: +${winBonus}
+      Final score: ${score}
+    `);
+
+    const scoreBreakdownData = {
+      baseScore,
+      cellOpeningPoints,
+      correctFlagPoints,
+      wrongFlagPenalty,
+      timeDecay,
+      winBonus,
+      finalScore: score,
+    };
+
+    setScoreBreakdown(scoreBreakdownData);
 
     if (isAuthenticated && onGameComplete) {
       try {
@@ -290,7 +394,6 @@ const MinesweeperGame: React.FC<GameProps> = ({ onGameComplete }) => {
           won: true,
         });
 
-        // Pass the actual time directly
         onGameComplete(score, difficulty.toLowerCase(), true, timeTaken);
         toast.success(`Score saved: ${score} points`);
       } catch (error) {
@@ -300,51 +403,79 @@ const MinesweeperGame: React.FC<GameProps> = ({ onGameComplete }) => {
     }
   };
 
+  // Replace the existing handleGameLoss function with this improved version
   const handleGameLoss = () => {
     const endTime = Date.now();
+    const timeTaken = Math.floor((endTime - gameState.startTime) / 1000);
+
     setGameState({
       ...gameState,
       status: "lost",
       endTime: endTime,
     });
 
+    // Enhanced scoring system for loss
+    const difficultyParams = {
+      beginner: {
+        baseScore: 25,
+        pointsPerCell: 1.5,
+        pointsPerCorrectFlag: 3,
+        penaltyPerWrongFlag: -5,
+        timeDecay: 0.15,
+      },
+      intermediate: {
+        baseScore: 60,
+        pointsPerCell: 2,
+        pointsPerCorrectFlag: 5,
+        penaltyPerWrongFlag: -8,
+        timeDecay: 0.1,
+      },
+      expert: {
+        baseScore: 100,
+        pointsPerCell: 2.5,
+        pointsPerCorrectFlag: 7,
+        penaltyPerWrongFlag: -10,
+        timeDecay: 0.05,
+      },
+    };
+
+    const params = difficultyParams[difficulty];
+
+    // Calculate score components for loss scenario
+    const baseScore = params.baseScore;
+    const cellOpeningPoints = gameStats.cellsOpened * params.pointsPerCell;
+    const correctFlagPoints =
+      gameStats.correctFlags * params.pointsPerCorrectFlag;
+    const wrongFlagPenalty = gameStats.wrongFlags * params.penaltyPerWrongFlag;
+
+    // Less severe time decay for losses (max 25% of base)
+    const timeDecayMax = baseScore * 0.25;
+    const timeDecay = Math.min(timeTaken * params.timeDecay, timeDecayMax);
+
+    // Calculate final score (minimum 5)
+    let score = Math.round(
+      baseScore +
+        cellOpeningPoints +
+        correctFlagPoints +
+        wrongFlagPenalty -
+        timeDecay
+    );
+
+    score = Math.max(score, 5);
+
+    // Set the score breakdown for display
+    const scoreBreakdownData = {
+      baseScore,
+      cellOpeningPoints,
+      correctFlagPoints,
+      wrongFlagPenalty,
+      timeDecay,
+      finalScore: score,
+    };
+
+    setScoreBreakdown(scoreBreakdownData);
+
     if (isAuthenticated && onGameComplete) {
-      const timeTaken = Math.floor((endTime - gameState.startTime) / 1000);
-
-      // Calculate consolation score based on game progress
-      // This estimates how much of the board was cleared before losing
-      const boardSize =
-        difficultySettings[difficulty].width *
-        difficultySettings[difficulty].height;
-      const totalCells = boardSize - difficultySettings[difficulty].mines;
-
-      // We don't have direct access to cells cleared, so let's use time as a rough proxy for progress
-      // Assuming reasonable clearing rates per difficulty
-      const avgTimePerCell = {
-        beginner: 0.5, // seconds per cell
-        intermediate: 0.4,
-        expert: 0.3,
-      };
-
-      const estimatedCellsCleared = Math.min(
-        timeTaken / avgTimePerCell[difficulty],
-        totalCells
-      );
-      const progressPercent = estimatedCellsCleared / totalCells;
-
-      // Base consolation scores by difficulty
-      const baseConsolationScores = {
-        beginner: 20,
-        intermediate: 40,
-        expert: 60,
-      };
-
-      // Calculate score based on progress (up to 80% of consolation base)
-      const score = Math.max(
-        Math.round(baseConsolationScores[difficulty] * progressPercent * 0.8),
-        5 // Minimum 5 points for participation
-      );
-
       try {
         saveScore({
           score,
@@ -353,7 +484,6 @@ const MinesweeperGame: React.FC<GameProps> = ({ onGameComplete }) => {
           won: false,
         });
 
-        // Pass the actual time directly
         onGameComplete(score, difficulty.toLowerCase(), false, timeTaken);
       } catch (error) {
         console.error("Error saving score:", error);
@@ -426,20 +556,62 @@ const MinesweeperGame: React.FC<GameProps> = ({ onGameComplete }) => {
           handleGameStart();
         }}
         onFlagChange={handleFlagChange}
+        onCellReveal={(stats) => {
+          updateGameStats({
+            cellRevealed: true,
+            isCorrectFlag: stats.isCorrectFlag,
+            isWrongFlag: stats.isWrongFlag,
+          });
+        }}
       />
 
-      {gameState.status === "won" && (
+      {gameState.status === "won" && scoreBreakdown && (
         <WinMessage>
           <h3>Victory! 🎉</h3>
           <p>Completed in {time} seconds</p>
+
+          <div className="mt-2 text-left text-sm">
+            <p>
+              <strong>Score Breakdown:</strong>
+            </p>
+            <p>Base Score: +{scoreBreakdown.baseScore}</p>
+            <p>Cells Opened: +{scoreBreakdown.cellOpeningPoints}</p>
+            <p>Correct Flags: +{scoreBreakdown.correctFlagPoints}</p>
+            {scoreBreakdown.wrongFlagPenalty !== 0 && (
+              <p>Wrong Flags: {scoreBreakdown.wrongFlagPenalty}</p>
+            )}
+            <p>Time Penalty: -{scoreBreakdown.timeDecay.toFixed(1)}</p>
+            <p>Win Bonus: +{scoreBreakdown.winBonus}</p>
+            <p className="font-bold mt-1">
+              Total Score: {scoreBreakdown.finalScore}
+            </p>
+          </div>
+
           <PlayAgainButton onClick={resetGame}>Play Again</PlayAgainButton>
         </WinMessage>
       )}
 
-      {gameState.status === "lost" && (
+      {gameState.status === "lost" && scoreBreakdown && (
         <LoseMessage>
           <h3>Game Over 💥</h3>
           <p>Better luck next time!</p>
+
+          <div className="mt-2 text-left text-sm">
+            <p>
+              <strong>Score Breakdown:</strong>
+            </p>
+            <p>Base Score: +{scoreBreakdown.baseScore}</p>
+            <p>Cells Opened: +{scoreBreakdown.cellOpeningPoints}</p>
+            <p>Correct Flags: +{scoreBreakdown.correctFlagPoints}</p>
+            {scoreBreakdown.wrongFlagPenalty !== 0 && (
+              <p>Wrong Flags: {scoreBreakdown.wrongFlagPenalty}</p>
+            )}
+            <p>Time Penalty: -{scoreBreakdown.timeDecay.toFixed(1)}</p>
+            <p className="font-bold mt-1">
+              Total Score: {scoreBreakdown.finalScore}
+            </p>
+          </div>
+
           <PlayAgainButton
             onClick={resetGame}
             color={`linear-gradient(to right, ${COLORS[0]}, #ff9999)`}
